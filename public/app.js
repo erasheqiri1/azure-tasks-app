@@ -48,14 +48,14 @@ async function loadItems() {
 
 async function toggleStatus(id, status) {
   await apiFetch('/items/' + id, { method: 'PUT', body: JSON.stringify({ status }) });
-  loadItems();
-  loadStats();
+  await loadItems();
+  await loadStats();
 }
 
 async function deleteItem(id) {
   await apiFetch('/items/' + id, { method: 'DELETE' });
-  loadItems();
-  loadStats();
+  await loadItems();
+  await loadStats();
 }
 
 document.getElementById('add-form').addEventListener('submit', async (e) => {
@@ -70,8 +70,8 @@ document.getElementById('add-form').addEventListener('submit', async (e) => {
     currentFilter = 'all';
     document.querySelectorAll('.filter-bar .btn').forEach(b => b.classList.remove('active'));
     document.querySelector('[data-filter="all"]').classList.add('active');
-    loadItems();
-    loadStats();
+    await loadItems();
+    await loadStats();
   }
 });
 
