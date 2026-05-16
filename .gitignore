@@ -1,0 +1,10 @@
+node_modules/
+.env
+logs/
+iisnode/
+coverage/
+.nyc_output/
+dist/
+*.log
+.DS_Store
+Thumbs.db
