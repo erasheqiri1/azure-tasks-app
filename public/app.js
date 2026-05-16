@@ -32,13 +32,13 @@ async function loadItems() {
         <div class="item-title">
           <span class="status-dot ${item.status}"></span>${item.title}
         </div>
-        ${item.description ? <div class="item-desc">${item.description}</div> : ''}
+        ${item.description ? `<div class="item-desc">${item.description}</div>` : ''}
         <div class="item-meta">ID: ${item.id} &bull; ${new Date(item.createdAt).toLocaleString('sq-AL')}</div>
       </div>
       <div class="item-actions">
         ${item.status === 'active'
-          ? <button class="btn btn-success" onclick="toggleStatus(${item.id}, 'completed')">&#10003;</button>
-          : <button class="btn btn-secondary btn-sm" onclick="toggleStatus(${item.id}, 'active')">&#8635;</button>
+          ? `<button class="btn btn-success" onclick="toggleStatus(${item.id}, 'completed')">&#10003;</button>`
+          : `<button class="btn btn-secondary btn-sm" onclick="toggleStatus(${item.id}, 'active')">&#8635;</button>`
         }
         <button class="btn btn-danger" onclick="deleteItem(${item.id})">&#10005;</button>
       </div>
@@ -95,4 +95,3 @@ async function checkHealth() {
 // Init
 loadStats();
 loadItems();
-checkHealth();

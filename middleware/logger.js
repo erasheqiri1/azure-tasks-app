@@ -13,7 +13,7 @@ function requestLogger(req, res, next) {
       method: req.method,
       url: req.originalUrl,
       status: res.statusCode,
-      duration: ${duration}ms,
+      duration: `${duration}ms`,
       ip: req.ip || req.connection.remoteAddress
     };
     const line = JSON.stringify(logEntry) + '\n';

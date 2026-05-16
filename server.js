@@ -44,17 +44,6 @@ app.use(express.static(path.join(__dirname, 'public')));
 app.use('/', indexRouter);
 app.use('/api', apiRouter);
 
-// Health check endpoint (required by Azure App Service)
-app.get('/health', (req, res) => {
-  res.status(200).json({
-    status: 'healthy',
-    timestamp: new Date().toISOString(),
-    uptime: process.uptime(),
-    environment: process.env.NODE_ENV || 'development',
-    version: process.env.npm_package_version || '1.0.0'
-  });
-});
-
 // 404 & error handlers
 app.use(notFound);
 app.use(errorHandler);
@@ -62,7 +51,7 @@ app.use(errorHandler);
 app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
-  console.log(`Health check: http://localhost:${PORT}/health`);
+  console.log(`App: http://localhost:${PORT}`);
 });
 
 module.exports = app;
