@@ -46,3 +46,29 @@ router.put('/items/:id', (req, res) => {
   items[index] = { ...items[index], title: title || items[index].title, description: description ?? items[index].description, status: status || items[index].status };
   res.json({ success: true, data: items[index] });
 });
+
+// DELETE /api/items/:id
+router.delete('/items/:id', (req, res) => {
+  const index = items.findIndex(i => i.id === parseInt(req.params.id));
+  if (index === -1) return res.status(404).json({ success: false, error: 'Item not found' });
+
+  items.splice(index, 1);
+  res.json({ success: true, message: 'Item deleted successfully' });
+});
+
+// GET /api/stats
+router.get('/stats', (req, res) => {
+  res.json({
+    success: true,
+    data: {
+      total: items.length,
+      active: items.filter(i => i.status === 'active').length,
+      completed: items.filter(i => i.status === 'completed').length,
+      serverTime: new Date().toISOString(),
+      nodeVersion: process.version,
+      uptime: (() => { const s = Math.floor(process.uptime()); const m = Math.floor(s/60); return m > 0 ? `${m}m ${s%60}s` : `${s}s`; })()
+    }
+  });
+});
+
+module.exports = router;
