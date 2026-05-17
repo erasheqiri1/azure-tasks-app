@@ -1,74 +1,101 @@
 const express = require('express');
 const router = express.Router();
-
-let items = [
-  { id: 1, title: 'Task e parë', description: 'Shembull detyre', status: 'active', createdAt: new Date().toISOString() },
-  { id: 2, title: 'Task e dytë', description: 'Detyrë tjetër shembull', status: 'completed', createdAt: new Date().toISOString() }
-];
-let nextId = 3;
+const pool = require('../db');
 
 // GET /api/items
-router.get('/items', (req, res) => {
-  const { status } = req.query;
-  const result = status ? items.filter(i => i.status === status) : items;
-  res.json({ success: true, count: result.length, data: result });
+router.get('/items', async (req, res) => {
+  try {
+    const { status } = req.query;
+    const query = status
+      ? 'SELECT * FROM items WHERE status = $1 ORDER BY id DESC'
+      : 'SELECT * FROM items ORDER BY id DESC';
+    const values = status ? [status] : [];
+    const result = await pool.query(query, values);
+    res.json({ success: true, count: result.rows.length, data: result.rows });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // GET /api/items/:id
-router.get('/items/:id', (req, res) => {
-  const item = items.find(i => i.id === parseInt(req.params.id));
-  if (!item) return res.status(404).json({ success: false, error: 'Item not found' });
-  res.json({ success: true, data: item });
+router.get('/items/:id', async (req, res) => {
+  try {
+    const result = await pool.query('SELECT * FROM items WHERE id = $1', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // POST /api/items
-router.post('/items', (req, res) => {
-  const { title, description } = req.body;
-  if (!title) return res.status(400).json({ success: false, error: 'Title is required' });
-
-  const item = {
-    id: nextId++,
-    title,
-    description: description || '',
-    status: 'active',
-    createdAt: new Date().toISOString()
-  };
-  items.push(item);
-  res.status(201).json({ success: true, data: item });
+router.post('/items', async (req, res) => {
+  try {
+    const { title, description } = req.body;
+    if (!title) return res.status(400).json({ success: false, error: 'Title is required' });
+    const result = await pool.query(
+      'INSERT INTO items (title, description) VALUES ($1, $2) RETURNING *',
+      [title, description || '']
+    );
+    res.status(201).json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // PUT /api/items/:id
-router.put('/items/:id', (req, res) => {
-  const index = items.findIndex(i => i.id === parseInt(req.params.id));
-  if (index === -1) return res.status(404).json({ success: false, error: 'Item not found' });
-
-  const { title, description, status } = req.body;
-  items[index] = { ...items[index], title: title || items[index].title, description: description ?? items[index].description, status: status || items[index].status };
-  res.json({ success: true, data: items[index] });
+router.put('/items/:id', async (req, res) => {
+  try {
+    const { title, description, status } = req.body;
+    const result = await pool.query(
+      `UPDATE items SET
+        title = COALESCE($1, title),
+        description = COALESCE($2, description),
+        status = COALESCE($3, status)
+       WHERE id = $4 RETURNING *`,
+      [title, description, status, req.params.id]
+    );
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
+    res.json({ success: true, data: result.rows[0] });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // DELETE /api/items/:id
-router.delete('/items/:id', (req, res) => {
-  const index = items.findIndex(i => i.id === parseInt(req.params.id));
-  if (index === -1) return res.status(404).json({ success: false, error: 'Item not found' });
-
-  items.splice(index, 1);
-  res.json({ success: true, message: 'Item deleted successfully' });
+router.delete('/items/:id', async (req, res) => {
+  try {
+    const result = await pool.query('DELETE FROM items WHERE id = $1 RETURNING *', [req.params.id]);
+    if (result.rows.length === 0) return res.status(404).json({ success: false, error: 'Item not found' });
+    res.json({ success: true, message: 'Item deleted successfully' });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 // GET /api/stats
-router.get('/stats', (req, res) => {
-  res.json({
-    success: true,
-    data: {
-      total: items.length,
-      active: items.filter(i => i.status === 'active').length,
-      completed: items.filter(i => i.status === 'completed').length,
-      serverTime: new Date().toISOString(),
-      nodeVersion: process.version,
-      uptime: (() => { const s = Math.floor(process.uptime()); const m = Math.floor(s/60); return m > 0 ? `${m}m ${s%60}s` : `${s}s`; })()
-    }
-  });
+router.get('/stats', async (req, res) => {
+  try {
+    const result = await pool.query(`
+      SELECT
+        COUNT(*) AS total,
+        COUNT(*) FILTER (WHERE status = 'active') AS active,
+        COUNT(*) FILTER (WHERE status = 'completed') AS completed
+      FROM items
+    `);
+    const s = result.rows[0];
+    res.json({
+      success: true,
+      data: {
+        total: parseInt(s.total),
+        active: parseInt(s.active),
+        completed: parseInt(s.completed),
+        nodeVersion: process.version
+      }
+    });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });
 
 module.exports = router;
