@@ -1,10 +1,8 @@
 const { Pool } = require('pg');
 
-const isLocal = !process.env.DATABASE_URL || process.env.DATABASE_URL.includes('localhost');
-
 const pool = new Pool({
-  connectionString: process.env.DATABASE_URL || 'postgresql://postgres:1234@localhost:5432/azure_tasks',
-  ssl: isLocal ? false : { rejectUnauthorized: false }
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
 });
 
 pool.connect((err) => {
