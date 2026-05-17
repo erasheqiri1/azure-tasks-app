@@ -128,8 +128,8 @@ const rateLimit = require('express-rate-limit');
 const path = require('path');
 
 const {
-    BotFrameworkAdapter,
-    ActivityHandler
+  BotFrameworkAdapter,
+  ActivityHandler
 } = require('botbuilder');
 
 const indexRouter = require('./routes/index');
@@ -147,7 +147,7 @@ app.use(compression());
 
 // Rate limiting
 const limiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
+  windowMs: 15 * 60 * 1000,
   max: 100,
   message: { error: 'Too many requests, please try again later.' }
 });
@@ -165,64 +165,58 @@ app.use(express.urlencoded({ extended: true }));
 // Static files
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Routes
+// Main route
 app.use('/', indexRouter);
-app.use('/api', apiRouter);
 
 // ==========================
 // AZURE BOT CONFIGURATION
 // ==========================
 
-const adapter = new BotFrameworkAdapter({
-    appId: process.env.MicrosoftAppId
-});
+// Empty config is used because the bot was created with User-Assigned Managed Identity.
+// This avoids MicrosoftAppPassword issues.
+const adapter = new BotFrameworkAdapter({});
+
+adapter.onTurnError = async (context, error) => {
+  console.error('[Bot Error]', error);
+  await context.sendActivity('Bot error: something went wrong.');
+};
 
 class TaskBot extends ActivityHandler {
+  constructor() {
+    super();
 
-    constructor() {
-        super();
+    this.onMessage(async (context, next) => {
+      const text = (context.activity.text || '').toLowerCase();
 
-        this.onMessage(async (context, next) => {
+      let reply = 'Unknown command. Type "help" to see available commands.';
 
-            const text = context.activity.text.toLowerCase();
+      if (text.includes('hello') || text.includes('hi')) {
+        reply = 'Hello from TaskFlow Bot!';
+      } else if (text.includes('help')) {
+        reply = 'Available commands: hello, help, tasks, completed.';
+      } else if (text.includes('tasks')) {
+        reply = 'You can manage tasks from the dashboard.';
+      } else if (text.includes('completed')) {
+        reply = 'Completed tasks are visible in the dashboard statistics.';
+      }
 
-            let reply = "Unknown command";
-
-            if (text.includes("hello")) {
-                reply = "Hello from TaskFlow Bot!";
-            }
-
-            else if (text.includes("help")) {
-                reply = "Available commands: hello, help, tasks";
-            }
-
-            else if (text.includes("tasks")) {
-                reply = "You can manage tasks from the dashboard.";
-            }
-
-            else if (text.includes("completed")) {
-                reply = "Completed tasks are visible in the dashboard statistics.";
-            }
-
-            await context.sendActivity(reply);
-
-            await next();
-        });
-    }
+      await context.sendActivity(reply);
+      await next();
+    });
+  }
 }
 
 const bot = new TaskBot();
 
-// Azure Bot endpoint
+// IMPORTANT: This route must be BEFORE app.use('/api', apiRouter)
 app.post('/api/messages', (req, res) => {
-
-    adapter.processActivity(req, res, async (context) => {
-
-        await bot.run(context);
-
-    });
-
+  adapter.processActivity(req, res, async (context) => {
+    await bot.run(context);
+  });
 });
+
+// API routes
+app.use('/api', apiRouter);
 
 // 404 & error handlers
 app.use(notFound);
@@ -233,6 +227,7 @@ app.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`App: http://localhost:${PORT}`);
+  console.log('Azure Bot endpoint: /api/messages');
 });
 
 module.exports = app;
