@@ -55,3 +55,65 @@ app.listen(PORT, () => {
 });
 
 module.exports = app;
+
+
+//per bot
+const restify = require('restify');
+
+const {
+    BotFrameworkAdapter,
+    ActivityHandler
+} = require('botbuilder');
+
+const botServer = restify.createServer();
+
+botServer.listen(process.env.PORT || 3978, () => {
+    console.log("Azure Bot Started");
+});
+
+const adapter = new BotFrameworkAdapter({
+    appId: process.env.MicrosoftAppId,
+    appPassword: process.env.MicrosoftAppPassword
+});
+
+class TaskBot extends ActivityHandler {
+
+    constructor() {
+        super();
+
+        this.onMessage(async (context, next) => {
+
+            const text = context.activity.text.toLowerCase();
+
+            let reply = "Unknown command";
+
+            if (text.includes("hello")) {
+                reply = "Hello from TaskFlow Bot!";
+            }
+
+            else if (text.includes("help")) {
+                reply = "Available commands: hello, help, tasks";
+            }
+
+            else if (text.includes("tasks")) {
+                reply = "You can manage tasks from the dashboard.";
+            }
+
+            await context.sendActivity(reply);
+
+            await next();
+        });
+    }
+}
+
+const bot = new TaskBot();
+
+botServer.post('/api/messages', (req, res) => {
+
+    adapter.processActivity(req, res, async (context) => {
+
+        await bot.run(context);
+
+    });
+
+});
